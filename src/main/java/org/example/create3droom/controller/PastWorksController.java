@@ -4,13 +4,18 @@ import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
-import javafx.scene.control.*;
+import javafx.scene.control.Alert;
+import javafx.scene.control.ButtonType;
+import javafx.scene.control.ListView;
+import javafx.scene.input.KeyCombination;
 import javafx.stage.Stage;
 import org.example.create3droom.RoomState;
+import org.example.create3droom.utils.SceneTransitionUtil;
 
 import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class PastWorksController {
 
@@ -40,20 +45,16 @@ public class PastWorksController {
 
     @FXML
     private void onLoadSelectedClicked() {
-        int selectedIndex = savedWorksListView.getSelectionModel().getSelectedIndex();
-        if (selectedIndex < 0) {
-            showAlert("Выберите сохранённую работу для загрузки.");
+        int idx = savedWorksListView.getSelectionModel().getSelectedIndex();
+        if (idx < 0) {
+            showAlert("Выберите сохранённую работу для загрузки");
             return;
         }
 
-        File file = savedFiles.get(selectedIndex);
-
+        File file = savedFiles.get(idx);
         try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(file))) {
             RoomState roomState = (RoomState) ois.readObject();
-
-            // Открыть окно FurnitureSelectionController и передать состояние комнаты
             openFurnitureSelectionWithRoomState(roomState);
-
         } catch (IOException | ClassNotFoundException e) {
             showAlert("Ошибка при загрузке работы: " + e.getMessage());
             e.printStackTrace();
@@ -62,33 +63,54 @@ public class PastWorksController {
 
     @FXML
     private void onDeleteSelectedClicked() {
-        int selectedIndex = savedWorksListView.getSelectionModel().getSelectedIndex();
-        if (selectedIndex < 0) {
-            showAlert("Выберите сохранённую работу для удаления.");
+        int idx = savedWorksListView.getSelectionModel().getSelectedIndex();
+        if (idx < 0) {
+            showAlert("Выберите сохранённую работу для удаления");
             return;
         }
 
-        File fileToDelete = savedFiles.get(selectedIndex);
-        if (fileToDelete.delete()) {
-            showAlert("Файл успешно удалён: " + fileToDelete.getName());
-            loadSavedWorks();  // обновляем список
+        File toDelete = savedFiles.get(idx);
+        if (toDelete.delete()) {
+            showAlert("Файл успешно удалён: " + toDelete.getName());
+            loadSavedWorks();
         } else {
             showAlert("Не удалось удалить файл.");
         }
     }
 
+    @FXML
+    private void onBackButtonClicked() {
+        try {
+            Parent menuRoot = FXMLLoader.load(
+                    Objects.requireNonNull(getClass().getResource("/view/menu.fxml"))
+            );
+            Stage stage = (Stage) savedWorksListView.getScene().getWindow();
+            stage.setTitle("Главное меню");
+            stage.setFullScreen(true);
+            stage.setFullScreenExitHint("");
+            stage.setFullScreenExitKeyCombination(KeyCombination.NO_MATCH);
+            SceneTransitionUtil.fadeToScene(stage, menuRoot);
+        } catch (IOException e) {
+            showAlert("Не удалось вернуться в главное меню: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
     private void openFurnitureSelectionWithRoomState(RoomState roomState) {
         try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/view/furniture_selection.fxml"));
-            Parent root = loader.load();
-
-            FurnitureSelectionController controller = loader.getController();
-            controller.applyRoomState(roomState);
+            FXMLLoader loader = new FXMLLoader(
+                    Objects.requireNonNull(getClass().getResource("/view/furniture_selection.fxml"))
+            );
+            Parent fsRoot = loader.load();
+            FurnitureSelectionController ctrl = loader.getController();
+            ctrl.applyRoomState(roomState);
 
             Stage stage = (Stage) savedWorksListView.getScene().getWindow();
-            stage.setScene(new Scene(root));
             stage.setTitle("Редактор комнаты");
-
+            stage.setFullScreen(true);
+            stage.setFullScreenExitHint("");
+            stage.setFullScreenExitKeyCombination(KeyCombination.NO_MATCH);
+            SceneTransitionUtil.fadeToScene(stage, fsRoot);
         } catch (IOException e) {
             showAlert("Ошибка при открытии редактора комнаты.");
             e.printStackTrace();
